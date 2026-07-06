@@ -275,28 +275,40 @@ udpSocket.bind(UDP_PORT, () => {
 });
 
 function sendLanAnnouncement() {
-  const sharedList = Array.from(sharedDevices.values());
-  const payload = JSON.stringify({
-    type: 'USB_LINK_ANNOUNCE',
-    hostname: HOSTNAME,
-    ip: LOCAL_IP,
-    port: HTTP_PORT,
-    sharedCount: sharedList.length,
-    sharedDevices: sharedList,
-    timestamp: Date.now()
-  });
+  try {
+    const sharedList = Array.from(sharedDevices.values());
+    const payloadStr = JSON.stringify({
+      type: 'USB_LINK_ANNOUNCE',
+      hostname: HOSTNAME,
+      ip: LOCAL_IP,
+      port: HTTP_PORT,
+      sharedCount: sharedList.length,
+      sharedDevices: sharedList,
+      timestamp: Date.now()
+    });
 
-  udpSocket.send(payload, 0, payload.length, UDP_PORT, '255.255.255.255', (err) => {
-    if (err && err.code !== 'EACCES' && err.code !== 'EPERM') {
-      // Игнорируем незначительные сетевые ошибки бродкаста
+    // Обязательно преобразуем в Buffer, так как русские символы и эмодзи занимают больше 1 байта, и string.length вызывает сбой UDP в Node.js!
+    const buf = Buffer.from(payloadStr, 'utf8');
+    udpSocket.send(buf, 0, buf.length, UDP_PORT, '255.255.255.255', (err) => {
+      if (err && err.code !== 'EACCES' && err.code !== 'EPERM') {
+        // Игнорируем незначительные сетевые ошибки бродкаста
+      }
+    });
+
+    // Дополнительно отправляем на широковещательный адрес подсети для надежности в сложных сетях Wi-Fi/LAN
+    const subnetBroadcast = LOCAL_IP.replace(/\.\d+$/, '.255');
+    if (subnetBroadcast !== '255.255.255.255' && subnetBroadcast !== '127.0.0.255') {
+      udpSocket.send(buf, 0, buf.length, UDP_PORT, subnetBroadcast, () => {});
     }
-  });
+  } catch (e) {
+    console.error('[UDP Announce Error]:', e.message);
+  }
 
-  // Очистка устаревших узлов (не выходивших на связь > 15 секунд)
+  // Очистка устаревших узлов (не выходивших на связь > 25 секунд)
   const now = Date.now();
   let removed = false;
   for (const [key, peer] of discoveredPeers.entries()) {
-    if (now - peer.lastSeen > 15000) {
+    if (now - peer.lastSeen > 25000) {
       discoveredPeers.delete(key);
       removed = true;
     }

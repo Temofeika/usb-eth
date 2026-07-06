@@ -220,30 +220,39 @@ document.addEventListener('DOMContentLoaded', () => {
         devsHtml = `
           <div class="peer-devices-grid">
             ${sharedDevs.map(dev => {
-              const isConnectedHere = currentState.connectedDevices && currentState.connectedDevices.some(c => c.originalId === dev.id);
-              
-              let actionBtn = `<button class="btn btn-primary btn-sm connect-remote-btn" data-ip="${peer.ip}" data-port="${peer.port}" data-id="${dev.id}">🔌 Подключить устройство</button>`;
-              let statusText = `<span style="color: var(--success-green); font-size: 12px; font-weight: 600;">🟢 Доступно по сети</span>`;
+              try {
+                const isConnectedHere = currentState.connectedDevices && currentState.connectedDevices.some(c => c.originalId === dev.id);
+                
+                let actionBtn = `<button class="btn btn-primary btn-sm connect-remote-btn" data-ip="${peer.ip}" data-port="${peer.port}" data-id="${dev.id}">🔌 Подключить устройство</button>`;
+                let statusText = `<span style="color: var(--success-green); font-size: 12px; font-weight: 600;">🟢 Доступно по сети</span>`;
 
-              if (isConnectedHere) {
-                actionBtn = `<button class="btn btn-danger btn-sm disconnect-remote-btn" data-id="remote-${dev.id}">❌ Отключить от ПК</button>`;
-                statusText = `<span style="color: var(--primary-cyan); font-size: 12px; font-weight: 700;">⚡ Подключено к вашему ПК</span>`;
-              } else if (dev.connected) {
-                actionBtn = `<button class="btn btn-secondary btn-sm" disabled style="opacity: 0.5;">🔒 Занято другим ПК</button>`;
-                statusText = `<span style="color: var(--warning-yellow); font-size: 12px;">Занято: ${dev.connectedTo}</span>`;
-              }
+                if (isConnectedHere) {
+                  actionBtn = `<button class="btn btn-danger btn-sm disconnect-remote-btn" data-id="remote-${dev.id}">❌ Отключить от ПК</button>`;
+                  statusText = `<span style="color: var(--primary-cyan); font-size: 12px; font-weight: 700;">⚡ Подключено к вашему ПК</span>`;
+                } else if (dev.connected) {
+                  actionBtn = `<button class="btn btn-secondary btn-sm" disabled style="opacity: 0.5;">🔒 Занято другим ПК</button>`;
+                  statusText = `<span style="color: var(--warning-yellow); font-size: 12px;">Занято: ${dev.connectedTo || 'Клиентом'}</span>`;
+                }
 
-              return `
-                <div class="device-card glass-card ${isConnectedHere ? 'connected' : ''}" style="padding: 16px;">
-                  <div class="card-top" style="margin-bottom: 8px;">
-                    <span style="font-size: 20px;">${dev.type.split(' ')[0] || '🔗'}</span>
-                    ${statusText}
+                const typeIcon = (dev.type && typeof dev.type === 'string') ? dev.type.split(' ')[0] : '🔗';
+                const devName = dev.name || 'USB Устройство';
+                const vidPidStr = dev.vidPid || '0000:0000';
+                const busIdStr = dev.busId || '1-1';
+
+                return `
+                  <div class="device-card glass-card ${isConnectedHere ? 'connected' : ''}" style="padding: 16px;">
+                    <div class="card-top" style="margin-bottom: 8px;">
+                      <span style="font-size: 20px;">${typeIcon}</span>
+                      ${statusText}
+                    </div>
+                    <div style="font-weight: 700; font-size: 14px; margin-bottom: 6px; color: #fff;">${devName}</div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px; font-family: monospace;">VID:PID ${vidPidStr} | BUS ${busIdStr}</div>
+                    <div>${actionBtn}</div>
                   </div>
-                  <div style="font-weight: 700; font-size: 14px; margin-bottom: 6px; color: #fff;">${dev.name}</div>
-                  <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px; font-family: monospace;">VID:PID ${dev.vidPid} | BUS ${dev.busId}</div>
-                  <div>${actionBtn}</div>
-                </div>
-              `;
+                `;
+              } catch (err) {
+                return '';
+              }
             }).join('')}
           </div>
         `;
