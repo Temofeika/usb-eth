@@ -8,10 +8,16 @@ on:
     branches: [ main, master ]
   workflow_dispatch: # Позволяет запускать сборку вручную из вкладки Actions
 
+# Разрешение для GITHUB_TOKEN на создание релизов и загрузку файлов
+permissions:
+  contents: write
+
 jobs:
   build-windows:
     name: 🖥️ Build Portable Windows EXE
     runs-on: windows-latest
+    permissions:
+      contents: write
     
     steps:
       - name: 📥 Checkout repository

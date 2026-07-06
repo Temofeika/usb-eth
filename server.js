@@ -576,6 +576,14 @@ app.get('/api/peers', (req, res) => {
 });
 
 // --- Запуск сервера ---
+server.on('error', (e) => {
+  if (e.code === 'EADDRINUSE') {
+    console.log(`[Server Notice] Порт ${HTTP_PORT} уже используется (сервис USB-Link Pro уже работает в фоне). Окно подключится к существующему процессу.`);
+  } else {
+    console.error('[Server Error]:', e);
+  }
+});
+
 server.listen(HTTP_PORT, '0.0.0.0', () => {
   console.log('================================================================');
   console.log(` ⚡ USB-Link Pro (Network USB Share Hub) успешно запущен!`);

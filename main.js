@@ -2,7 +2,14 @@ const { app, BrowserWindow, Tray, Menu, shell, ipcMain } = require('electron');
 const path = require('path');
 const { exec } = require('child_process');
 
-// Запуск встроенного локального сервера USB-Link Pro
+// Защита от повторного запуска: если программа уже работает в трее, разворачиваем существующее окно
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+  process.exit(0);
+}
+
+// Запуск встроенного локального сервера USB-Link Pro только в основном экземпляре
 require('./server');
 
 let mainWindow = null;
@@ -89,6 +96,14 @@ function createTray() {
 app.whenReady().then(() => {
   createWindow();
   createTray();
+
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
