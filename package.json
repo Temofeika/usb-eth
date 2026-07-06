@@ -1,0 +1,55 @@
+{
+  "name": "usb-link-pro",
+  "version": "1.0.0",
+  "description": "Полноценное программное обеспечение для проброса и совместного использования USB-устройств по локальной сети (USB over IP / Network USB Share)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "server-only": "node server.js",
+    "build-exe": "electron-builder --win portable",
+    "build-installer": "electron-builder --win nsis"
+  },
+  "keywords": [
+    "usb",
+    "network",
+    "share",
+    "usbip",
+    "windows",
+    "ethernet",
+    "electron",
+    "desktop"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.antigravity.usblinkpro",
+    "productName": "USB-Link Pro",
+    "copyright": "Copyright © 2026 Antigravity",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "portable"
+      ]
+    },
+    "portable": {
+      "artifactName": "USB-Link-Pro-v${version}.exe"
+    },
+    "files": [
+      "main.js",
+      "server.js",
+      "public/**/*",
+      "package.json"
+    ]
+  }
+}

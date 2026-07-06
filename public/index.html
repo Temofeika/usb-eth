@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚡ USB-Link Pro — Проброс USB-устройств по сети</title>
+  <!-- Современный шрифт Google Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Верхняя навигационная панель -->
+    <header class="navbar glass-panel">
+      <div class="logo">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-text">
+          <h1>USB-Link <span>PRO</span></h1>
+          <p>Network USB Share & Virtualization Hub</p>
+        </div>
+      </div>
+
+      <div class="nav-tabs">
+        <button class="nav-tab active" data-tab="local-tab">
+          <span class="tab-icon">🖥️</span>
+          <span class="tab-label">Мои устройства</span>
+          <span class="badge count-badge" id="local-count">0</span>
+        </button>
+        <button class="nav-tab" data-tab="remote-tab">
+          <span class="tab-icon">🌐</span>
+          <span class="tab-label">Сетевые компьютеры</span>
+          <span class="badge remote-badge" id="peer-count">0</span>
+        </button>
+        <button class="nav-tab" data-tab="driver-tab">
+          <span class="tab-icon">⚙️</span>
+          <span class="tab-label">Драйверы USBIP</span>
+          <span class="badge status-badge" id="driver-badge">Virtual Mode</span>
+        </button>
+      </div>
+
+      <div class="network-status">
+        <div class="status-indicator">
+          <span class="pulse-dot"></span>
+          <span class="status-text">В сети LAN: <strong id="my-ip-display">127.0.0.1</strong></span>
+        </div>
+        <div class="hostname-tag" id="my-hostname">DESKTOP-PC</div>
+      </div>
+    </header>
+
+    <!-- Основное содержимое вкладок -->
+    <main class="main-content">
+      
+      <!-- ВКЛАДКА 1: Локальные устройства (Сервер / Поделиться) -->
+      <section id="local-tab" class="tab-content active">
+        <div class="section-header">
+          <div class="title-area">
+            <h2>🖥️ Управление USB-портами (Поделиться в сеть)</h2>
+            <p>Выберите физическое устройство, вставленное в ваш USB-порт, и нажмите <strong>«Поделиться»</strong>. Оно станет мгновенно доступно другим компьютерам в вашей локальной сети.</p>
+          </div>
+          <div class="actions-area">
+            <div class="search-box glass-panel">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="local-search" placeholder="Поиск устройства по имени или VID:PID...">
+            </div>
+            <button class="btn btn-secondary refresh-btn" id="refresh-local-btn" title="Обновить список USB">
+              <span>🔄</span> Обновить PnP
+            </button>
+          </div>
+        </div>
+
+        <!-- Сетка USB устройств -->
+        <div class="devices-grid" id="local-devices-grid">
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Сканирование USB-контроллеров и портов Plug-and-Play...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ВКЛАДКА 2: Сетевые устройства (Клиент / Подключить) -->
+      <section id="remote-tab" class="tab-content">
+        <div class="section-header">
+          <div class="title-area">
+            <h2>🌐 Обнаруженные сетевые компьютеры (LAN Auto-Discovery)</h2>
+            <p>Программа автоматически сканирует локальную сеть. Выберите устройство на удаленном компьютере и нажмите <strong>«Подключить»</strong>, чтобы оно появилось на вашем ПК как локальное USB-устройство!</p>
+          </div>
+          <div class="actions-area">
+            <div class="manual-add glass-panel">
+              <input type="text" id="manual-ip-input" placeholder="IP удаленного ПК (напр. 192.168.1.50)...">
+              <button class="btn btn-primary btn-sm" id="add-ip-btn">➕ Подключить по IP</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Радар сканирования сети -->
+        <div class="radar-banner glass-panel">
+          <div class="radar-animation">
+            <div class="radar-circle"></div>
+            <div class="radar-sweep"></div>
+          </div>
+          <div class="radar-text">
+            <h4>📡 Автоматический поиск узлов USB-Link Pro в подсети...</h4>
+            <p>Убедитесь, что программа запущена на втором компьютере в этой же сети WiFi или Ethernet.</p>
+          </div>
+          <div class="radar-stats">
+            <span id="radar-peer-stat">Найдено компьютеров: 0</span>
+          </div>
+        </div>
+
+        <!-- Список сетевых компьютеров и их общих устройств -->
+        <div class="peers-container" id="peers-list">
+          <!-- Динамическое наполнение -->
+        </div>
+
+        <!-- Активные удаленные подключения -->
+        <div class="active-connections-section">
+          <h3>⚡ Активные смонтированные USB-устройства на этом ПК</h3>
+          <div class="connections-list" id="active-connections-list">
+            <div class="empty-state glass-panel">
+              <span>🔌</span>
+              <p>Нет подключенных удаленных USB-устройств. Выберите доступное устройство из списка выше и нажмите «Подключить»!</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ВКЛАДКА 3: Драйверы USBIP и ядро (Windows Driver Center) -->
+      <section id="driver-tab" class="tab-content">
+        <div class="driver-center glass-panel">
+          <div class="driver-header">
+            <div class="driver-icon">🛡️</div>
+            <div class="driver-title">
+              <h2>Архитектура проброса и системные драйверы Windows</h2>
+              <p>Узнайте, как работает проброс USB на уровне ядра (Kernel-mode USB over IP) и проверьте статус компонентов в вашей ОС Windows.</p>
+            </div>
+          </div>
+
+          <div class="driver-status-cards">
+            <div class="status-card glass-card" id="card-usbipd">
+              <div class="card-icon">📦</div>
+              <div class="card-info">
+                <h4>Служба USBIPD-WIN (Сервер)</h4>
+                <p class="status-desc">Захвачивает физические порты USB и транслирует URB-запросы в сеть TCP/IP.</p>
+                <span class="status-chip chip-warn" id="status-usbipd-chip">Проверка...</span>
+              </div>
+            </div>
+
+            <div class="status-card glass-card" id="card-vhci">
+              <div class="card-icon">🔌</div>
+              <div class="card-info">
+                <h4>Виртуальный хаб (VHCI Client Driver)</h4>
+                <p class="status-desc">Создает виртуальные USB-порты в Windows для подключения удаленных устройств.</p>
+                <span class="status-chip chip-warn" id="status-vhci-chip">Проверка...</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="guide-box">
+            <h3>🚀 Как включить 100% аппаратный проброс в Windows:</h3>
+            <p>Для полноценной интеграции в Диспетчер Устройств Windows (чтобы флешки, ключи ЭЦП, принтеры и веб-камеры работали без ограничений), установите стандартный открытый драйвер <code>usbipd-win</code>.</p>
+            
+            <div style="margin-bottom: 20px;">
+              <button class="btn btn-primary" id="auto-install-driver-btn" style="width: 100%; padding: 16px; font-size: 16px; background: linear-gradient(135deg, #10b981, #00f0ff); color: #000; font-weight: 800; box-shadow: 0 0 25px rgba(0, 240, 255, 0.4);">
+                <span>🛡️</span> Автоматически установить драйвер ядра в Windows (1 клик от Админа)
+              </button>
+            </div>
+
+            <div class="terminal-box">
+              <div class="terminal-header">
+                <span>⚡ Windows PowerShell (Запустить от имени Администратора)</span>
+                <button class="copy-btn" id="copy-cmd-btn" data-cmd="winget install --id dorssel.usbipd-win -e --source winget">📋 Копировать команду</button>
+              </div>
+              <div class="terminal-code">
+                <code>winget install --id dorssel.usbipd-win -e --source winget</code>
+              </div>
+            </div>
+
+            <div class="guide-steps">
+              <div class="step-item">
+                <span class="step-num">1</span>
+                <p>Скопируйте команду выше и выполните ее в PowerShell на обоих компьютерах.</p>
+              </div>
+              <div class="step-item">
+                <span class="step-num">2</span>
+                <p>Перезапустите приложение <strong>USB-Link Pro</strong> (двойной клик на ярлык или <code>npm start</code>).</p>
+              </div>
+              <div class="step-item">
+                <span class="step-num">3</span>
+                <p>Готово! Теперь при нажатии «Поделиться» устройство будет транслироваться на уровне ядра Windows!</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Всплывающее уведомление (Toast Notification) -->
+    <div id="toast" class="toast glass-panel">
+      <span id="toast-icon">✨</span>
+      <span id="toast-message">Уведомление</span>
+    </div>
+
+    <footer class="app-footer">
+      <p>⚡ <strong>USB-Link Pro v1.0</strong> — Разработано Antigravity для мгновенного сетевого проброса USB. Работает по UDP/TCP в любой локальной сети.</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
