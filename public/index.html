@@ -157,6 +157,20 @@
             </div>
           </div>
 
+          <div class="glass-card" style="margin-top: 20px; margin-bottom: 24px; padding: 20px; border-left: 4px solid var(--primary-cyan); background: rgba(0, 240, 255, 0.05);">
+            <h4 style="color: var(--primary-cyan); margin-bottom: 8px; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+              <span>💾</span> Как открыть подключенную флешку или диск в Проводнике (Этот компьютер):
+            </h4>
+            <p style="font-size: 14px; color: #fff; line-height: 1.5; margin-bottom: 12px;">
+              Установленный драйвер <code>usbipd-win</code> является <strong>серверной</strong> службой экспорта портов. Для обычной работы с файлами на флешках в ОС Windows в 100 раз быстрее и надежнее работает стандартный сетевой доступ (без необходимости ставить низкоуровневые драйверы ядра VHCI):
+            </p>
+            <ol style="font-size: 13.5px; color: var(--text-muted); margin-left: 20px; line-height: 1.7;">
+              <li>На ПК с физически вставленной флешкой: откройте <strong>Этот компьютер</strong> &rarr; правой кнопкой мыши на флешку &rarr; <strong>Свойства</strong> &rarr; вкладка <strong>«Доступ»</strong> &rarr; <strong>«Расширенная настройка общего доступа...»</strong> &rarr; поставьте галочку <strong>«Открыть общий доступ к этой папке»</strong>.</li>
+              <li>На принимающем ПК: в верхней адресной строке Проводника введите IP-адрес сервера (например, <code>\\192.168.109.46</code>) и нажмите Enter.</li>
+              <li>Нажмите правой кнопкой мыши на появившуюся папку флешки &rarr; <strong>«Подключить сетевой диск...»</strong> — флешка навсегда появится в окне «Этот компьютер»!</li>
+            </ol>
+          </div>
+
           <div class="guide-box">
             <h3>🚀 Как включить 100% аппаратный проброс в Windows:</h3>
             <p>Для полноценной интеграции в Диспетчер Устройств Windows (чтобы флешки, ключи ЭЦП, принтеры и веб-камеры работали без ограничений), установите стандартный открытый драйвер <code>usbipd-win</code>.</p>
