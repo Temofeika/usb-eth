@@ -383,24 +383,52 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         if (typeof window !== 'undefined' && window.require) {
           const { ipcRenderer } = window.require('electron');
-          showToast('🛡️ Запуск установщика PowerShell с правами Администратора...');
+          showToast('🛡️ Запуск установщика службы USBIPD от имени Администратора...');
           autoInstallBtn.disabled = true;
-          autoInstallBtn.innerHTML = '<span>⏳</span> Установка компонента ядра Windows...';
+          autoInstallBtn.innerHTML = '<span>⏳</span> Установка сервера USBIPD...';
           
           const res = await ipcRenderer.invoke('install-driver-admin');
           if (res.success) {
             showToast('✅ Установка завершена! Перезапустите приложение.');
-            autoInstallBtn.innerHTML = '<span>✅</span> Драйвер установлен! Перезапустите приложение';
+            autoInstallBtn.innerHTML = '<span>✅</span> Служба установлена! Перезапустите приложение';
           } else {
             showToast('⚠️ Ошибка установки: ' + res.error, true);
             autoInstallBtn.disabled = false;
-            autoInstallBtn.innerHTML = '<span>🛡️</span> Попробовать снова (или используйте терминал ниже)';
+            autoInstallBtn.innerHTML = '<span>🛡️</span> Попробовать снова (или используйте терминал)';
           }
         } else {
           showToast('📋 Скопируйте команду ниже и запустите PowerShell от имени Администратора');
         }
       } catch (e) {
         showToast('📋 Скопируйте команду ниже и выполните в PowerShell от Администратора');
+      }
+    });
+  }
+
+  const autoInstallClientBtn = document.getElementById('auto-install-client-btn');
+  if (autoInstallClientBtn) {
+    autoInstallClientBtn.addEventListener('click', async () => {
+      try {
+        if (typeof window !== 'undefined' && window.require) {
+          const { ipcRenderer } = window.require('electron');
+          showToast('🔌 Запуск скачивания и установки клиентского драйвера VHCI с GitHub...');
+          autoInstallClientBtn.disabled = true;
+          autoInstallClientBtn.innerHTML = '<span>⏳</span> Скачивание и установка VHCI драйвера...';
+          
+          const res = await ipcRenderer.invoke('install-client-admin');
+          if (res.success) {
+            showToast('✅ Клиентский драйвер VHCI установлен! Перезапустите программу.');
+            autoInstallClientBtn.innerHTML = '<span>✅</span> Драйвер VHCI установлен! Перезапустите приложение';
+          } else {
+            showToast('⚠️ Ошибка установки: ' + res.error, true);
+            autoInstallClientBtn.disabled = false;
+            autoInstallClientBtn.innerHTML = '<span>🔌</span> Попробовать снова (или скачайте с GitHub)';
+          }
+        } else {
+          showToast('📋 Откройте страницу релизов vadimgrn/usbip-win2 на GitHub и установите драйвер');
+        }
+      } catch (e) {
+        showToast('📋 Откройте страницу релизов vadimgrn/usbip-win2 на GitHub и установите драйвер');
       }
     });
   }

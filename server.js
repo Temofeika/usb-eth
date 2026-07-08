@@ -72,12 +72,32 @@ function checkSystemDrivers() {
     broadcastState();
   });
 
+  const commonClientPaths = [
+    'C:\\Program Files\\usbip-win2',
+    'C:\\Program Files\\USBip',
+    'C:\\Program Files (x86)\\USBip',
+    'C:\\Windows\\System32'
+  ];
+  commonClientPaths.forEach(p => {
+    if (fs.existsSync(p) && !process.env.PATH.includes(p)) {
+      process.env.PATH += `;${p}`;
+    }
+  });
+
   exec('usbip --version', (err, stdout) => {
     if (!err && stdout.trim()) {
       driverStatus.usbipClientInstalled = true;
+      console.log(`[Driver Check] Найден клиентский драйвер VHCI: ${stdout.trim()}`);
     } else {
-      driverStatus.usbipClientInstalled = false;
+      const foundFile = commonClientPaths.some(p => fs.existsSync(path.join(p, 'usbip.exe')));
+      if (foundFile) {
+        driverStatus.usbipClientInstalled = true;
+        console.log('[Driver Check] Найден исполняемый файл usbip.exe клиентского драйвера VHCI.');
+      } else {
+        driverStatus.usbipClientInstalled = false;
+      }
     }
+    broadcastState();
   });
 }
 

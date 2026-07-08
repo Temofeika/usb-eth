@@ -166,3 +166,60 @@ Read-Host "Нажмите Enter для закрытия окна..."
     }
   });
 });
+
+// IPC Обработчик для автоматического скачивания и установки клиентского драйвера VHCI (usbip-win2) с правами Администратора
+ipcMain.handle('install-client-admin', async () => {
+  return new Promise((resolve) => {
+    const fs = require('fs');
+    const os = require('os');
+    const path = require('path');
+    const tmpScript = path.join(os.tmpdir(), 'install_vhci.ps1');
+    const scriptContent = `
+$ErrorActionPreference = 'Continue'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+Clear-Host
+Write-Host "==========================================================" -ForegroundColor Cyan
+Write-Host " ⚡ USB-Link Pro — Установка клиентского драйвера VHCI" -ForegroundColor Cyan
+Write-Host "==========================================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Запрос информации о последнем релизе usbip-win2 с GitHub..." -ForegroundColor Yellow
+try {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    $release = Invoke-RestMethod -Uri 'https://api.github.com/repos/vadimgrn/usbip-win2/releases/latest'
+    $arch = if ($env:PROCESSOR_ARCHITECTURE -match "ARM") { "arm64" } else { "x64" }
+    $asset = $release.assets | Where-Object { $_.name -match $arch -and $_.name -match "\\.exe$" } | Select-Object -First 1
+    if (-not $asset) {
+        throw "Не найден установочный файл для архитектуры $arch"
+    }
+    $url = $asset.browser_download_url
+    $installer = "$env:TEMP\\" + $asset.name
+    Write-Host "Скачивание драйвера ($($asset.name)) из $url..." -ForegroundColor Yellow
+    Invoke-WebRequest -Uri $url -OutFile $installer -UseBasicParsing
+    Write-Host "Запуск инсталлятора драйвера ядра VHCI..." -ForegroundColor Green
+    Start-Process -FilePath $installer -ArgumentList "/SILENT /NORESTART" -Wait
+    Write-Host ""
+    Write-Host "✅ Клиентский драйвер VHCI (usbip-win2) успешно установлен!" -ForegroundColor Green
+    Write-Host "Пожалуйста, перезапустите USB-Link Pro для активации аппаратного приема устройств." -ForegroundColor Green
+} catch {
+    Write-Host "❌ Ошибка установки: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Попробуйте скачать и установить вручную: github.com/vadimgrn/usbip-win2/releases" -ForegroundColor Yellow
+}
+Write-Host ""
+Read-Host "Нажмите Enter для закрытия окна..."
+`;
+    try {
+      fs.writeFileSync(tmpScript, scriptContent, 'utf8');
+      const cmd = `powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File \\"${tmpScript}\\"' -Wait"`;
+      exec(cmd, (err) => {
+        if (err) {
+          resolve({ success: false, error: err.message });
+        } else {
+          resolve({ success: true });
+        }
+      });
+    } catch (e) {
+      resolve({ success: false, error: e.message });
+    }
+  });
+});
+

@@ -155,55 +155,46 @@
                 <span class="status-chip chip-warn" id="status-vhci-chip">Проверка...</span>
               </div>
             </div>
-          </div>
-
-          <div class="glass-card" style="margin-top: 20px; margin-bottom: 24px; padding: 20px; border-left: 4px solid var(--primary-cyan); background: rgba(0, 240, 255, 0.05);">
-            <h4 style="color: var(--primary-cyan); margin-bottom: 8px; font-size: 16px; display: flex; align-items: center; gap: 8px;">
-              <span>💾</span> Как открыть подключенную флешку или диск в Проводнике (Этот компьютер):
-            </h4>
-            <p style="font-size: 14px; color: #fff; line-height: 1.5; margin-bottom: 12px;">
-              Установленный драйвер <code>usbipd-win</code> является <strong>серверной</strong> службой экспорта портов. Для обычной работы с файлами на флешках в ОС Windows в 100 раз быстрее и надежнее работает стандартный сетевой доступ (без необходимости ставить низкоуровневые драйверы ядра VHCI):
-            </p>
-            <ol style="font-size: 13.5px; color: var(--text-muted); margin-left: 20px; line-height: 1.7;">
-              <li>На ПК с физически вставленной флешкой: откройте <strong>Этот компьютер</strong> &rarr; правой кнопкой мыши на флешку &rarr; <strong>Свойства</strong> &rarr; вкладка <strong>«Доступ»</strong> &rarr; <strong>«Расширенная настройка общего доступа...»</strong> &rarr; поставьте галочку <strong>«Открыть общий доступ к этой папке»</strong>.</li>
-              <li>На принимающем ПК: в верхней адресной строке Проводника введите IP-адрес сервера (например, <code>\\192.168.109.46</code>) и нажмите Enter.</li>
-              <li>Нажмите правой кнопкой мыши на появившуюся папку флешки &rarr; <strong>«Подключить сетевой диск...»</strong> — флешка навсегда появится в окне «Этот компьютер»!</li>
-            </ol>
-          </div>
-
-          <div class="guide-box">
-            <h3>🚀 Как включить 100% аппаратный проброс в Windows:</h3>
-            <p>Для полноценной интеграции в Диспетчер Устройств Windows (чтобы флешки, ключи ЭЦП, принтеры и веб-камеры работали без ограничений), установите стандартный открытый драйвер <code>usbipd-win</code>.</p>
+          <div class="guide-box" style="margin-top: 24px;">
+            <h3>🚀 Как включить 100% аппаратный проброс USB в ядре Windows:</h3>
+            <p style="margin-bottom: 16px;">Для полноценного монтирования устройств (чтобы флешки, ключи ЭЦП, HASP, принтеры и сканеры определялись в <strong>Диспетчере устройств Windows</strong> как физически вставленные), в ОС Windows требуются два компонента:</p>
             
-            <div style="margin-bottom: 20px;">
-              <button class="btn btn-primary" id="auto-install-driver-btn" style="width: 100%; padding: 16px; font-size: 16px; background: linear-gradient(135deg, #10b981, #00f0ff); color: #000; font-weight: 800; box-shadow: 0 0 25px rgba(0, 240, 255, 0.4);">
-                <span>🛡️</span> Автоматически установить драйвер ядра в Windows (1 клик от Админа)
-              </button>
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+              <h4 style="color: #10b981; margin-bottom: 8px; font-size: 15px;">1️⃣ На отдающем компьютере (Сервер экспорта):</h4>
+              <p style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 12px;">Установите официальную службу <code>usbipd-win</code> для захвата портов:</p>
+              
+              <div style="margin-bottom: 12px;">
+                <button class="btn btn-primary" id="auto-install-driver-btn" style="width: 100%; padding: 14px; font-size: 15px; background: linear-gradient(135deg, #10b981, #00f0ff); color: #000; font-weight: 800;">
+                  <span>🛡️</span> Установить службу USBIPD-WIN (1 клик от Админа)
+                </button>
+              </div>
+
+              <div class="terminal-box" style="margin-bottom: 0;">
+                <div class="terminal-header">
+                  <span>⚡ Windows PowerShell от Админа (Вручную)</span>
+                  <button class="copy-btn" id="copy-cmd-btn" data-cmd="winget install --id dorssel.usbipd-win -e --source winget">📋 Копировать</button>
+                </div>
+                <div class="terminal-code">
+                  <code>winget install --id dorssel.usbipd-win -e --source winget</code>
+                </div>
+              </div>
             </div>
 
-            <div class="terminal-box">
-              <div class="terminal-header">
-                <span>⚡ Windows PowerShell (Запустить от имени Администратора)</span>
-                <button class="copy-btn" id="copy-cmd-btn" data-cmd="winget install --id dorssel.usbipd-win -e --source winget">📋 Копировать команду</button>
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 16px;">
+              <h4 style="color: #00f0ff; margin-bottom: 8px; font-size: 15px;">2️⃣ На принимающем компьютере (Клиентский драйвер VHCI):</h4>
+              <p style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 12px;">Пакет <code>usbipd-win</code> является только сервером. Чтобы принимать и монтировать устройства в Диспетчер устройств Windows, на принимающий ПК нужно установить драйвер виртуального хост-контроллера <strong>VHCI</strong>:</p>
+              
+              <div style="margin-bottom: 14px;">
+                <button class="btn btn-primary" id="auto-install-client-btn" style="width: 100%; padding: 14px; font-size: 15px; background: linear-gradient(135deg, #00f0ff, #3b82f6); color: #000; font-weight: 800; box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);">
+                  <span>🔌</span> Установить клиентский драйвер VHCI (usbip-win2) в 1 клик
+                </button>
               </div>
-              <div class="terminal-code">
-                <code>winget install --id dorssel.usbipd-win -e --source winget</code>
-              </div>
-            </div>
 
-            <div class="guide-steps">
-              <div class="step-item">
-                <span class="step-num">1</span>
-                <p>Скопируйте команду выше и выполните ее в PowerShell на обоих компьютерах.</p>
-              </div>
-              <div class="step-item">
-                <span class="step-num">2</span>
-                <p>Перезапустите приложение <strong>USB-Link Pro</strong> (двойной клик на ярлык или <code>npm start</code>).</p>
-              </div>
-              <div class="step-item">
-                <span class="step-num">3</span>
-                <p>Готово! Теперь при нажатии «Поделиться» устройство будет транслироваться на уровне ядра Windows!</p>
-              </div>
+              <ul style="font-size: 13.5px; color: var(--text-main); margin-left: 20px; line-height: 1.7; margin-bottom: 14px;">
+                <li><strong>Автоматическая установка:</strong> Нажмите кнопку выше — программа скачает официальный инсталлятор с GitHub (vadimgrn/usbip-win2) и установит драйвер ядра <code>usbip_vhci.sys</code>.</li>
+                <li><strong>Альтернативные клиенты:</strong> Также подходят клиенты <code>VirtualHere USB Client</code> или <code>USB Network Gate</code>.</li>
+              </ul>
+              <p style="font-size: 12.5px; color: var(--warning-yellow); margin-top: 8px;">⚠️ После установки драйвера VHCI перезапустите приложение USB-Link Pro — статус справа изменится на «Активен (VHCI Client OK)», и устройства начнут монтироваться прямо в систему!</p>
             </div>
           </div>
         </div>
