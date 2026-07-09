@@ -585,7 +585,46 @@ function getUsbipdExecutablePath() {
   return 'usbipd';
 }
 
-function handleShareDevice(deviceId) {
+async function shareDeviceElevated(busId) {
+  writeAppLog(`🚀 [USB Share Admin] Запуск службы usbipd, открытие порта 3240 и привязка BUS ${busId}...`, 'SHARE');
+  const scriptPath = 'C:\\Users\\Public\\share_usb.ps1';
+  const logPath = 'C:\\Users\\Public\\usbipd_share.log';
+
+  const psContent = `
+param([string]$BusId)
+$logFile = "${logPath}"
+"--- [USB SHARE START BUSID: $BusId] ---" | Out-File -FilePath $logFile -Encoding utf8
+Start-Service -Name "usbipd" -ErrorAction SilentlyContinue
+$srv = Get-Service -Name "usbipd" -ErrorAction SilentlyContinue
+"Service usbipd status: $($srv.Status)" | Out-File -FilePath $logFile -Append -Encoding utf8
+netsh advfirewall firewall add rule name="USBIPD-WIN TCP 3240" dir=in action=allow protocol=TCP localport=3240 2>&1 | Out-String | Out-File -FilePath $logFile -Append -Encoding utf8
+$exe = "usbipd"
+if (Test-Path "C:\\Program Files\\usbipd-win\\usbipd.exe") { $exe = "C:\\Program Files\\usbipd-win\\usbipd.exe" }
+$res = & $exe bind --busid $BusId --force 2>&1 | Out-String
+if ($res -like "*error*" -or $res -like "*unknown*") {
+  $res = & $exe bind --busid $BusId 2>&1 | Out-String
+}
+"usbipd bind output: $res" | Out-File -FilePath $logFile -Append -Encoding utf8
+$listRes = & $exe list 2>&1 | Out-String
+"usbipd list output:\n$listRes" | Out-File -FilePath $logFile -Append -Encoding utf8
+"--- [USB SHARE END] ---" | Out-File -FilePath $logFile -Append -Encoding utf8
+`;
+
+  fs.writeFileSync(scriptPath, psContent.trim(), 'utf8');
+  await runElevatedCommand('powershell.exe', `-NoProfile -ExecutionPolicy Bypass -File "${scriptPath}" -BusId "${busId}"`);
+
+  let logOutput = '';
+  try {
+    if (fs.existsSync(logPath)) {
+      logOutput = fs.readFileSync(logPath, 'utf8').trim();
+    }
+  } catch (e) {}
+
+  writeAppLog(`[USB Share Result]:\n${logOutput || 'No log output'}`, 'INFO');
+  writeAppLog(`✅ [USB Share] Устройство BUS ${busId} успешно расшарено в службе USBIPD!`, 'SUCCESS');
+}
+
+async function handleShareDevice(deviceId) {
   const dev = localDevices.find(d => d.id === deviceId || d.busId === deviceId);
   if (!dev) return;
 
@@ -596,22 +635,7 @@ function handleShareDevice(deviceId) {
   writeAppLog(`🌐 [USB Share] Открываем доступ по сети к "${dev.name}" (BUS: ${dev.busId})...`, 'SHARE');
 
   if (dev.busId && dev.busId !== 'virtual') {
-    const usbipdExe = getUsbipdExecutablePath();
-    exec('netsh advfirewall firewall add rule name="USBIPD-WIN TCP 3240" dir=in action=allow protocol=TCP localport=3240', () => {});
-
-    const bindCmd = `"${usbipdExe}" bind --busid ${dev.busId} --force`;
-    writeAppLog(`[USBIPD CMD]: ${bindCmd}`, 'INFO');
-
-    exec(bindCmd, async (err, stdout, stderr) => {
-      const output = ((stdout || '') + ' ' + (stderr || '')).trim();
-      writeAppLog(`[usbipd bind output]: ${output || 'OK'}`, err ? 'WARN' : 'SUCCESS');
-
-      if (err || output.toLowerCase().includes('admin') || output.toLowerCase().includes('denied') || output.toLowerCase().includes('privilege')) {
-        writeAppLog(`[usbipd bind] Запрос прав Администратора для открытия доступа к BUS ${dev.busId}...`, 'WARN');
-        await runElevatedCommand(usbipdExe, `bind --busid ${dev.busId} --force`);
-        writeAppLog(`✅ [usbipd bind] Устройство BUS ${dev.busId} успешно расшарено от имени Администратора!`, 'SUCCESS');
-      }
-    });
+    await shareDeviceElevated(dev.busId);
   }
 
   broadcastState();

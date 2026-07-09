@@ -161,7 +161,12 @@ document.addEventListener('DOMContentLoaded', () => {
         btnHtml = `<button class="btn btn-secondary unshare-btn" data-id="${dev.id}">🔒 Завершить сеанс</button>`;
       } else if (dev.shared) {
         badgeHtml = `<span class="status-badge badge-shared">🟢 Открыто в сеть (Ждет подключения)</span>`;
-        btnHtml = `<button class="btn btn-danger unshare-btn" data-id="${dev.id}">❌ Прекратить доступ</button>`;
+        btnHtml = `
+          <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
+            <button class="btn btn-danger unshare-btn" data-id="${dev.id}">❌ Прекратить доступ</button>
+            <button class="btn btn-secondary btn-sm force-share-btn" data-id="${dev.id}" style="font-size: 11px; padding: 7px; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4); color: #10b981; cursor: pointer; font-weight: 700;">⚡ Принудительно открыть в USBIPD (Лог)</button>
+          </div>
+        `;
       }
 
       return `
@@ -198,6 +203,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = e.currentTarget.getAttribute('data-id');
         sendWsAction('unshare_device', { deviceId: id });
         showToast('🔒 Сетевой доступ к устройству закрыт');
+      });
+    });
+
+    document.querySelectorAll('.force-share-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = e.currentTarget.getAttribute('data-id');
+        sendWsAction('share_device', { deviceId: id });
+        showToast('⚡ Запуск службы usbipd и принудительная привязка (см. Логи)...');
       });
     });
   }
