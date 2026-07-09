@@ -157,21 +157,26 @@
             </div>
           <div class="guide-box" style="margin-top: 24px;">
             <h3>🚀 Как включить 100% аппаратный проброс USB в ядре Windows:</h3>
-            <p style="margin-bottom: 16px;">Для полноценного монтирования устройств (чтобы флешки, ключи ЭЦП, HASP, принтеры и сканеры определялись в <strong>Диспетчере устройств Windows</strong> как физически вставленные), в ОС Windows требуются два компонента:</p>
+            <p style="margin-bottom: 20px; line-height: 1.5;">Для полноценного монтирования устройств (чтобы флешки, ключи ЭЦП, HASP, принтеры и сканеры определялись в <strong>Диспетчере устройств Windows</strong> как физически вставленные), в ОС Windows требуются два официальных компонента:</p>
             
-            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
-              <h4 style="color: #10b981; margin-bottom: 8px; font-size: 15px;">1️⃣ На отдающем компьютере (Сервер экспорта):</h4>
-              <p style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 12px;">Установите официальную службу <code>usbipd-win</code> для захвата портов:</p>
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; padding: 20px; margin-bottom: 24px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                <h4 style="color: #10b981; font-size: 16px; margin: 0;">1️⃣ На отдающем компьютере (Сервер экспорта):</h4>
+                <a href="javascript:void(0)" class="github-link-btn" data-url="https://github.com/dorssel/usbipd-win/releases/latest" style="background: rgba(16, 185, 129, 0.15); color: #10b981; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 700; text-decoration: none; border: 1px solid rgba(16, 185, 129, 0.3); display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                  <span>🌐</span> Скачать .msi с GitHub (dorssel/usbipd-win)
+                </a>
+              </div>
+              <p style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">Установите официальную службу <strong>usbipd-win</strong>. Вы можете скачать инсталлятор с GitHub по кнопке выше или установить автоматически:</p>
               
-              <div style="margin-bottom: 12px;">
+              <div style="margin-bottom: 16px;">
                 <button class="btn btn-primary" id="auto-install-driver-btn" style="width: 100%; padding: 14px; font-size: 15px; background: linear-gradient(135deg, #10b981, #00f0ff); color: #000; font-weight: 800;">
-                  <span>🛡️</span> Установить службу USBIPD-WIN (1 клик от Админа)
+                  <span>🛡️</span> Установить службу USBIPD-WIN автоматически
                 </button>
               </div>
 
               <div class="terminal-box" style="margin-bottom: 0;">
                 <div class="terminal-header">
-                  <span>⚡ Windows PowerShell от Админа (Вручную)</span>
+                  <span>⚡ Windows PowerShell от Админа (Альтернатива)</span>
                   <button class="copy-btn" id="copy-cmd-btn" data-cmd="winget install --id dorssel.usbipd-win -e --source winget">📋 Копировать</button>
                 </div>
                 <div class="terminal-code">
@@ -180,21 +185,26 @@
               </div>
             </div>
 
-            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 16px;">
-              <h4 style="color: #00f0ff; margin-bottom: 8px; font-size: 15px;">2️⃣ На принимающем компьютере (Клиентский драйвер VHCI):</h4>
-              <p style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 12px;">Пакет <code>usbipd-win</code> является только сервером. Чтобы принимать и монтировать устройства в Диспетчер устройств Windows, на принимающий ПК нужно установить драйвер виртуального хост-контроллера <strong>VHCI</strong>:</p>
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; padding: 20px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                <h4 style="color: #00f0ff; font-size: 16px; margin: 0;">2️⃣ На принимающем компьютере (Клиентский драйвер VHCI):</h4>
+                <a href="javascript:void(0)" class="github-link-btn" data-url="https://github.com/vadimgrn/usbip-win2/releases/latest" style="background: rgba(0, 240, 255, 0.15); color: #00f0ff; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 700; text-decoration: none; border: 1px solid rgba(0, 240, 255, 0.3); display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                  <span>🌐</span> Скачать .exe с GitHub (vadimgrn/usbip-win2)
+                </a>
+              </div>
+              <p style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">Пакет <code>usbipd-win</code> является только сервером. Чтобы принимать и монтировать устройства в Диспетчер устройств Windows, на принимающий ПК нужно установить клиентский драйвер виртуального хост-контроллера <strong>VHCI (usbip-win2)</strong>:</p>
               
-              <div style="margin-bottom: 14px;">
+              <div style="margin-bottom: 16px;">
                 <button class="btn btn-primary" id="auto-install-client-btn" style="width: 100%; padding: 14px; font-size: 15px; background: linear-gradient(135deg, #00f0ff, #3b82f6); color: #000; font-weight: 800; box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);">
-                  <span>🔌</span> Установить клиентский драйвер VHCI (usbip-win2) в 1 клик
+                  <span>🔌</span> Установить клиентский драйвер VHCI автоматически
                 </button>
               </div>
 
-              <ul style="font-size: 13.5px; color: var(--text-main); margin-left: 20px; line-height: 1.7; margin-bottom: 14px;">
-                <li><strong>Автоматическая установка:</strong> Нажмите кнопку выше — программа скачает официальный инсталлятор с GitHub (vadimgrn/usbip-win2) и установит драйвер ядра <code>usbip_vhci.sys</code>.</li>
-                <li><strong>Альтернативные клиенты:</strong> Также подходят клиенты <code>VirtualHere USB Client</code> или <code>USB Network Gate</code>.</li>
+              <ul style="font-size: 13.5px; color: var(--text-main); margin-left: 20px; line-height: 1.7; margin-bottom: 16px;">
+                <li><strong>Установка с GitHub (Самый надежный способ):</strong> Нажмите кнопку <strong>«🌐 Скачать .exe с GitHub»</strong> выше, скачайте файл со страницы релизов и запустите установку.</li>
+                <li><strong>Альтернативные клиенты:</strong> Также поддерживаются клиенты <code>VirtualHere USB Client</code> или <code>USB Network Gate</code>.</li>
               </ul>
-              <p style="font-size: 12.5px; color: var(--warning-yellow); margin-top: 8px;">⚠️ После установки драйвера VHCI перезапустите приложение USB-Link Pro — статус справа изменится на «Активен (VHCI Client OK)», и устройства начнут монтироваться прямо в систему!</p>
+              <p style="font-size: 13px; color: var(--warning-yellow); margin: 0; background: rgba(245, 158, 11, 0.1); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.3);">⚠️ <strong>Важно:</strong> После установки драйвера VHCI обязательно перезапустите программу USB-Link Pro — статус справа изменится на «Активен (VHCI Client OK)»!</p>
             </div>
           </div>
         </div>

@@ -56,14 +56,25 @@ function getLocalIp() {
 const LOCAL_IP = getLocalIp();
 const HOSTNAME = os.hostname();
 
+// --- Очистка строки версии от длинных SHA-хешей и метаданных ---
+function cleanVersionString(ver) {
+  if (!ver) return '';
+  const str = ver.trim();
+  const match = str.match(/^([0-9]+\.[0-9]+(\.[0-9]+)?(-\d+)?)/);
+  if (match) {
+    return match[1];
+  }
+  return str.length > 14 ? str.substring(0, 14) + '...' : str;
+}
+
 // --- Проверка системных драйверов USBIP (usbipd-win / usbip) ---
 function checkSystemDrivers() {
   exec('usbipd --version', (err, stdout) => {
     if (!err && stdout.trim()) {
       driverStatus.usbipdInstalled = true;
-      driverStatus.usbipdVersion = stdout.trim();
+      driverStatus.usbipdVersion = cleanVersionString(stdout);
       driverStatus.virtualModeActive = false;
-      console.log(`[Driver Check] Найдена служба usbipd-win: v${stdout.trim()}`);
+      console.log(`[Driver Check] Найдена служба usbipd-win: v${driverStatus.usbipdVersion}`);
     } else {
       driverStatus.usbipdInstalled = false;
       driverStatus.virtualModeActive = true;
@@ -87,11 +98,13 @@ function checkSystemDrivers() {
   exec('usbip --version', (err, stdout) => {
     if (!err && stdout.trim()) {
       driverStatus.usbipClientInstalled = true;
-      console.log(`[Driver Check] Найден клиентский драйвер VHCI: ${stdout.trim()}`);
+      driverStatus.usbipClientVersion = cleanVersionString(stdout);
+      console.log(`[Driver Check] Найден клиентский драйвер VHCI: ${driverStatus.usbipClientVersion}`);
     } else {
       const foundFile = commonClientPaths.some(p => fs.existsSync(path.join(p, 'usbip.exe')));
       if (foundFile) {
         driverStatus.usbipClientInstalled = true;
+        driverStatus.usbipClientVersion = 'Installed (VHCI)';
         console.log('[Driver Check] Найден исполняемый файл usbip.exe клиентского драйвера VHCI.');
       } else {
         driverStatus.usbipClientInstalled = false;

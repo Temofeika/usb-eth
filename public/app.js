@@ -433,6 +433,26 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // --- Обработка прямых ссылок на GitHub ---
+  document.querySelectorAll('.github-link-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const url = btn.getAttribute('data-url');
+      if (url) {
+        if (typeof window !== 'undefined' && window.require) {
+          try {
+            const { shell } = window.require('electron');
+            shell.openExternal(url);
+            showToast('🌐 Открываем официальную страницу релизов GitHub в браузере...');
+            return;
+          } catch (err) { console.error(err); }
+        }
+        window.open(url, '_blank');
+        showToast('🌐 Открываем страницу релизов GitHub...');
+      }
+    });
+  });
+
   // --- Система уведомлений Toast ---
   function showToast(message, isError = false) {
     const toast = document.getElementById('toast');
