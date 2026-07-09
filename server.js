@@ -647,7 +647,25 @@ async function handleShareDevice(deviceId) {
   sendLanAnnouncement();
 }
 
-function handleUnshareDevice(deviceId) {
+async function unshareDeviceElevated(busId) {
+  writeAppLog(`🔒 [USB Unshare] Завершение сеанса / отвязка BUS ${busId} в службе USBIPD...`, 'INFO');
+  const usbipdExe = getUsbipdExecutablePath();
+  const unbindCmd = `"${usbipdExe}" unbind --busid ${busId}`;
+  writeAppLog(`[USBIPD CMD]: ${unbindCmd}`, 'INFO');
+
+  exec(unbindCmd, async (err, stdout, stderr) => {
+    const output = ((stdout || '') + ' ' + (stderr || '')).trim();
+    if (err || output.toLowerCase().includes('admin') || output.toLowerCase().includes('denied') || output.toLowerCase().includes('privilege')) {
+      writeAppLog(`[usbipd unbind] Запрос прав Администратора для закрытия доступа к BUS ${busId}...`, 'WARN');
+      await runElevatedCommand(usbipdExe, `unbind --busid ${busId}`);
+      writeAppLog(`✅ [usbipd unbind] Сетевой доступ к BUS ${busId} закрыт от имени Администратора.`, 'SUCCESS');
+    } else {
+      writeAppLog(`✅ [usbipd unbind] Сетевой доступ к BUS ${busId} закрыт.`, 'SUCCESS');
+    }
+  });
+}
+
+async function handleUnshareDevice(deviceId) {
   const dev = localDevices.find(d => d.id === deviceId || d.busId === deviceId);
   if (!dev) return;
 
@@ -660,8 +678,7 @@ function handleUnshareDevice(deviceId) {
   writeAppLog(`[USB Unshare] Устройство "${dev.name}" скрыто из сети.`, 'INFO');
 
   if (dev.busId && dev.busId !== 'virtual') {
-    const usbipdExe = getUsbipdExecutablePath();
-    exec(`"${usbipdExe}" unbind --busid ${dev.busId}`, () => {});
+    await unshareDeviceElevated(dev.busId);
   }
 
   broadcastState();
@@ -827,6 +844,28 @@ app.get('/api/devices', (req, res) => {
 app.get('/api/peers', (req, res) => {
   res.json(Array.from(discoveredPeers.values()));
 });
+
+function cleanupAllDevices() {
+  writeAppLog('🧹 Очистка всех сетевых привязок и пробросов перед выходом...', 'INFO');
+  try {
+    const usbipdExe = getUsbipdExecutablePath();
+    exec(`"${usbipdExe}" unbind -a`, () => {});
+  } catch (e) {}
+  try {
+    const exePath = getUsbipExecutablePath();
+    exec(`"${exePath}" detach -p 0`, () => {});
+    exec(`"${exePath}" detach -p 1`, () => {});
+  } catch (e) {}
+}
+
+app.post('/api/cleanup-all', (req, res) => {
+  cleanupAllDevices();
+  res.json({ success: true });
+});
+
+process.on('exit', cleanupAllDevices);
+process.on('SIGINT', () => { cleanupAllDevices(); process.exit(); });
+process.on('SIGTERM', () => { cleanupAllDevices(); process.exit(); });
 
 // --- Запуск сервера ---
 server.on('error', (e) => {

@@ -122,6 +122,11 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   app.isQuiting = true;
+  try {
+    const http = require('http');
+    const req = http.request({ hostname: '127.0.0.1', port: 4545, path: '/api/cleanup-all', method: 'POST' });
+    req.end();
+  } catch (e) {}
 });
 
 // IPC Обработчик для установки драйвера с правами Администратора в один клик

@@ -570,6 +570,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const unbindAllBtn = document.getElementById('unbind-all-btn');
+  if (unbindAllBtn) {
+    unbindAllBtn.addEventListener('click', () => {
+      fetch('/api/cleanup-all', { method: 'POST' });
+      showToast('🧹 Отвязываем все расшаренные устройства и закрываем сеансы...');
+    });
+  }
+
   // Запуск клиента WebSocket
   connectWebSocket();
 });
