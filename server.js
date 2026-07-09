@@ -11,12 +11,41 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
+const LOG_FILE_PATH = 'C:\\Users\\Public\\USB-Link-Pro.log';
+const recentLogs = [];
+
+function writeAppLog(message, level = 'INFO') {
+  const timestamp = new Date().toLocaleTimeString();
+  const line = `[${timestamp}] [${level}] ${message}`;
+  console.log(line);
+  recentLogs.push(line);
+  if (recentLogs.length > 300) recentLogs.shift();
+  try {
+    fs.appendFileSync(LOG_FILE_PATH, line + '\n');
+  } catch (e) {}
+
+  wss.clients.forEach(client => {
+    if (client.readyState === 1) {
+      client.send(JSON.stringify({ type: 'LOG_MESSAGE', line, logs: recentLogs }));
+    }
+  });
+}
+
 const HTTP_PORT = 4545;
 const UDP_PORT = 4546;
 
 app.use(corsMiddleware);
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/api/logs', (req, res) => {
+  res.json({ logs: recentLogs, logFilePath: LOG_FILE_PATH });
+});
+
+app.post('/api/open-log-file', (req, res) => {
+  exec(`notepad.exe "${LOG_FILE_PATH}"`, () => {});
+  res.json({ success: true });
+});
 
 function corsMiddleware(req, res, next) {
   res.header('Access-Control-Allow-Origin', '*');
@@ -435,32 +464,41 @@ function getUsbipExecutablePath() {
 }
 
 function performKernelAttach(peerIp, busId, notifyWs = null) {
+  writeAppLog(`⚡ Запуск монтирования устройства ${busId} с удаленного ПК ${peerIp}...`, 'ATTACH');
   exec('mountvol /E', () => {});
   const exePath = getUsbipExecutablePath();
-  const argsStr = `attach -r ${peerIp} -b ${busId}`;
-  const fullCmd = `"${exePath}" ${argsStr}`;
 
-  exec(fullCmd, async (err, stdout, stderr) => {
-    const output = ((stdout || '') + ' ' + (stderr || '')).trim();
-    console.log(`[Kernel Attach Output]: ${output}`);
+  exec(`"${exePath}" list -r ${peerIp}`, (listErr, listStdout, listStderr) => {
+    const listOut = ((listStdout || '') + ' ' + (listStderr || '')).trim();
+    writeAppLog(`[USBIP LIST ${peerIp}]: ${listOut || 'OK'}`, listErr ? 'WARN' : 'INFO');
 
-    if (err || output.toLowerCase().includes('admin') || output.toLowerCase().includes('denied') || output.toLowerCase().includes('privilege')) {
-      console.log(`[Kernel Attach] Запрос прав Администратора для ${exePath} ${argsStr}...`);
-      await runElevatedCommand(exePath, argsStr);
-      if (notifyWs && notifyWs.readyState === 1) {
-        notifyWs.send(JSON.stringify({ type: 'KERNEL_LOG', success: true, message: `⚡ Выполнено монтирование с правами Администратора (BUS: ${busId})` }));
+    const argsStr = `attach -r ${peerIp} -b ${busId}`;
+    const fullCmd = `"${exePath}" ${argsStr}`;
+    writeAppLog(`[USBIP CMD]: ${fullCmd}`, 'INFO');
+
+    exec(fullCmd, async (err, stdout, stderr) => {
+      const output = ((stdout || '') + ' ' + (stderr || '')).trim();
+      writeAppLog(`[Kernel Attach Output]: ${output || 'No output'}`, err ? 'ERROR' : 'INFO');
+
+      if (err || output.toLowerCase().includes('admin') || output.toLowerCase().includes('denied') || output.toLowerCase().includes('privilege')) {
+        writeAppLog(`[Kernel Attach] Запрос прав Администратора для монтирования...`, 'WARN');
+        await runElevatedCommand(exePath, argsStr);
+        writeAppLog(`[Kernel Attach] Монтирование от имени Администратора завершено.`, 'INFO');
+        if (notifyWs && notifyWs.readyState === 1) {
+          notifyWs.send(JSON.stringify({ type: 'KERNEL_LOG', success: true, message: `⚡ Монтирование выполнено (см. Журнал логов)` }));
+        }
+      } else if (err || output.toLowerCase().includes('error')) {
+        writeAppLog(`[Kernel Attach Error]: ${output}`, 'ERROR');
+        if (notifyWs && notifyWs.readyState === 1) {
+          notifyWs.send(JSON.stringify({ type: 'KERNEL_LOG', success: false, message: `⚠️ Ошибка USBIP: ${output}` }));
+        }
+      } else {
+        writeAppLog(`[Kernel Attach SUCCESS]: ${output}`, 'SUCCESS');
+        if (notifyWs && notifyWs.readyState === 1) {
+          notifyWs.send(JSON.stringify({ type: 'KERNEL_LOG', success: true, message: `✅ Успешно смонтировано в ОС (BUS: ${busId})` }));
+        }
       }
-    } else if (err || output.toLowerCase().includes('error')) {
-      console.error(`[Kernel Attach Error]: ${output}`);
-      if (notifyWs && notifyWs.readyState === 1) {
-        notifyWs.send(JSON.stringify({ type: 'KERNEL_LOG', success: false, message: `⚠️ Ошибка USBIP: ${output}` }));
-      }
-    } else {
-      console.log(`[Kernel Attach SUCCESS]: ${output}`);
-      if (notifyWs && notifyWs.readyState === 1) {
-        notifyWs.send(JSON.stringify({ type: 'KERNEL_LOG', success: true, message: `✅ Устройство смонтировано в ядре Windows (BUS: ${busId})` }));
-      }
-    }
+    });
   });
 }
 

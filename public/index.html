@@ -38,6 +38,10 @@
           <span class="tab-label">Драйверы USBIP</span>
           <span class="badge status-badge" id="driver-badge">Virtual Mode</span>
         </button>
+        <button class="nav-tab" data-tab="logs-tab">
+          <span class="tab-icon">📜</span>
+          <span class="tab-label">Логи и Диагностика</span>
+        </button>
       </div>
 
       <div class="network-status">
@@ -207,6 +211,27 @@
               <p style="font-size: 13px; color: var(--warning-yellow); margin: 0; background: rgba(245, 158, 11, 0.1); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.3);">⚠️ <strong>Важно:</strong> После установки драйвера VHCI обязательно перезапустите программу USB-Link Pro — статус справа изменится на «Активен (VHCI Client OK)»!</p>
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- ВКЛАДКА 4: Логи и Диагностика (Журнал работы) -->
+      <section id="logs-tab" class="tab-pane">
+        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div>
+            <h2>📜 Системный журнал и диагностика</h2>
+            <p>Здесь отображаются все команды ОС, статус привязки и ошибки ядра Windows в реальном времени</p>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button class="btn btn-primary btn-sm" id="open-log-file-btn" style="padding: 8px 14px;">📂 Открыть лог в Блокноте</button>
+            <button class="btn btn-secondary btn-sm" id="clear-logs-btn" style="padding: 8px 14px;">🧹 Очистить экран</button>
+          </div>
+        </div>
+
+        <div class="glass-panel" style="padding: 16px;">
+          <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
+            Файл лога на диске: <code style="color: var(--primary-cyan);">C:\Users\Public\USB-Link-Pro.log</code>
+          </div>
+          <pre id="logs-viewer" style="background: #0f172a; color: #38bdf8; padding: 14px; border-radius: 8px; height: 380px; overflow-y: auto; font-family: 'Consolas', monospace; font-size: 12px; line-height: 1.5; border: 1px solid rgba(255,255,255,0.1); margin: 0; white-space: pre-wrap;"></pre>
         </div>
       </section>
 

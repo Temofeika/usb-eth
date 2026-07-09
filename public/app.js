@@ -61,6 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
           updateAppState(data);
         } else if (data.type === 'KERNEL_LOG') {
           showToast(data.message, !data.success);
+        } else if (data.type === 'LOG_MESSAGE') {
+          appendLogLine(data.line);
         }
       } catch (e) {
         console.error('[WebSocket Error]:', e);
@@ -501,6 +503,37 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
       toast.classList.remove('show');
     }, 4000);
+  }
+
+  // --- Управление просмотром ЛОГОВ ---
+  const logsViewer = document.getElementById('logs-viewer');
+  function appendLogLine(line) {
+    if (!logsViewer) return;
+    logsViewer.textContent += line + '\n';
+    logsViewer.scrollTop = logsViewer.scrollHeight;
+  }
+
+  fetch('/api/logs').then(r => r.json()).then(data => {
+    if (logsViewer && data.logs) {
+      logsViewer.textContent = data.logs.join('\n') + '\n';
+      logsViewer.scrollTop = logsViewer.scrollHeight;
+    }
+  }).catch(() => {});
+
+  const openLogBtn = document.getElementById('open-log-file-btn');
+  if (openLogBtn) {
+    openLogBtn.addEventListener('click', () => {
+      fetch('/api/open-log-file', { method: 'POST' });
+      showToast('📂 Открываем файл лога C:\\Users\\Public\\USB-Link-Pro.log в Блокноте...');
+    });
+  }
+
+  const clearLogBtn = document.getElementById('clear-logs-btn');
+  if (clearLogBtn) {
+    clearLogBtn.addEventListener('click', () => {
+      if (logsViewer) logsViewer.textContent = '';
+      showToast('🧹 Окно логов очищено');
+    });
   }
 
   // Запуск клиента WebSocket
