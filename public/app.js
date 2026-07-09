@@ -227,8 +227,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 let statusText = `<span style="color: var(--success-green); font-size: 12px; font-weight: 600;">🟢 Доступно по сети</span>`;
 
                 if (isConnectedHere) {
-                  actionBtn = `<button class="btn btn-danger btn-sm disconnect-remote-btn" data-id="remote-${dev.id}">❌ Отключить от ПК</button>`;
-                  statusText = `<span style="color: var(--primary-cyan); font-size: 12px; font-weight: 700;">⚡ Подключено к вашему ПК</span>`;
+                  actionBtn = `
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                      <button class="btn btn-danger btn-sm disconnect-remote-btn" data-id="remote-${dev.id}">❌ Отключить от ПК</button>
+                      <div style="display: flex; gap: 6px;">
+                        <button class="btn btn-secondary btn-sm open-explorer-btn" style="flex: 1; font-size: 11px; padding: 6px; background: rgba(0,240,255,0.15); border: 1px solid rgba(0,240,255,0.4); color: #00f0ff; cursor: pointer;">📂 Этот ПК</button>
+                        <button class="btn btn-secondary btn-sm open-devmgr-btn" style="flex: 1; font-size: 11px; padding: 6px; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4); color: #10b981; cursor: pointer;">⚙️ Диспетчер</button>
+                      </div>
+                    </div>
+                  `;
+                  statusText = `<span style="color: var(--primary-cyan); font-size: 12px; font-weight: 700;">⚡ Смонтировано в ОС</span>`;
                 } else if (dev.connected) {
                   actionBtn = `<button class="btn btn-secondary btn-sm" disabled style="opacity: 0.5;">🔒 Занято другим ПК</button>`;
                   statusText = `<span style="color: var(--warning-yellow); font-size: 12px;">Занято: ${dev.connectedTo || 'Клиентом'}</span>`;
@@ -293,6 +301,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = e.currentTarget.getAttribute('data-id');
         sendWsAction('disconnect_remote', { deviceId: id });
         showToast('❌ Отключение удаленного устройства...');
+      });
+    });
+
+    document.querySelectorAll('.open-explorer-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        sendWsAction('open_system_tool', { tool: 'explorer' });
+        showToast('📂 Открываем Проводник "Этот компьютер"...');
+      });
+    });
+
+    document.querySelectorAll('.open-devmgr-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        sendWsAction('open_system_tool', { tool: 'devmgmt' });
+        showToast('⚙️ Открываем Диспетчер устройств Windows...');
       });
     });
   }

@@ -369,6 +369,12 @@ wss.on('connection', (ws, req) => {
         handleConnectRemote(data.peerIp, data.peerPort, data.deviceId);
       } else if (data.action === 'disconnect_remote') {
         handleDisconnectRemote(data.deviceId);
+      } else if (data.action === 'open_system_tool') {
+        if (data.tool === 'explorer') {
+          exec('explorer.exe ::{20D04FE0-3AEA-1069-A2D8-08002B30309D}', () => {});
+        } else if (data.tool === 'devmgmt') {
+          exec('mmc devmgmt.msc', () => {});
+        }
       }
     } catch (e) {
       console.error('[WebSocket] Error parsing message:', e);
@@ -408,6 +414,26 @@ function broadcastState() {
   });
 }
 
+// --- Вспомогательная функция запуска команды с правами Администратора ---
+function runElevatedCommand(cmdLine) {
+  return new Promise((resolve) => {
+    const psCmd = `powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -Command \\"${cmdLine}\\"' -WindowStyle Hidden -Wait"`;
+    exec(psCmd, (err) => resolve(!err));
+  });
+}
+
+function getUsbipExecutable() {
+  const commonPaths = [
+    'C:\\Program Files\\usbip-win2\\usbip.exe',
+    'C:\\Program Files\\USBip\\usbip.exe',
+    'C:\\Program Files (x86)\\USBip\\usbip.exe'
+  ];
+  for (const p of commonPaths) {
+    if (fs.existsSync(p)) return `"${p}"`;
+  }
+  return 'usbip';
+}
+
 // --- Логика проброса и подключения USB (Sharing & Attachment) ---
 function handleShareDevice(deviceId) {
   const dev = localDevices.find(d => d.id === deviceId || d.busId === deviceId);
@@ -420,10 +446,16 @@ function handleShareDevice(deviceId) {
   console.log(`[USB Share] Устройство "${dev.name}" (${dev.vidPid}) открыто для сетевого доступа!`);
 
   if (driverStatus.usbipdInstalled && dev.busId && dev.busId !== 'virtual') {
-    // Вызов реального системного бинда в Windows
-    exec(`usbipd bind --busid ${dev.busId} --force`, (err, stdout, stderr) => {
-      if (err) {
-        console.warn(`[usbipd warn] Ошибка бинда ${dev.busId}, используется виртуальная эмуляция: ${stderr || err.message}`);
+    // Открываем TCP порт 3240 в брандмауэре Windows для службы USBIPD
+    exec('netsh advfirewall firewall add rule name="USBIPD-WIN TCP 3240" dir=in action=allow protocol=TCP localport=3240', () => {});
+
+    // Вызов реального системного бинда в Windows с авто-элевацией при необходимости
+    const bindCmd = `usbipd bind --busid ${dev.busId} --force`;
+    exec(bindCmd, async (err, stdout, stderr) => {
+      if (err || (stderr && stderr.toLowerCase().includes('admin'))) {
+        console.warn(`[usbipd bind] Запрос прав Администратора для привязки ${dev.busId}...`);
+        await runElevatedCommand(bindCmd);
+        console.log(`[usbipd bind] Устройство ${dev.busId} привязано с правами Администратора!`);
       } else {
         console.log(`[usbipd] Устройство ${dev.busId} успешно привязано к службе USBIPD!`);
       }
@@ -533,9 +565,18 @@ async function handleConnectRemote(peerIp, peerPort, deviceId) {
             
             // Если на клиенте установлен драйвер usbip, выполняем реальное системное монтирование порта!
             if (driverStatus.usbipClientInstalled && resp.usbipBusId) {
-              exec(`usbip attach -r ${peerIp} -b ${resp.usbipBusId}`, (err, stdout) => {
-                if (!err) {
-                  console.log(`[Kernel Mount] Windows PnP смонтировал виртуальный USB порт: ${resp.usbipBusId}`);
+              // Включаем автоматическое назначение букв дисков для USB-накопителей в Windows
+              exec('mountvol /E', () => {});
+
+              const usbipExe = getUsbipExecutable();
+              const attachCmd = `${usbipExe} attach -r ${peerIp} -b ${resp.usbipBusId}`;
+              exec(attachCmd, async (err, stdout, stderr) => {
+                if (err || (stderr && (stderr.toLowerCase().includes('admin') || stderr.toLowerCase().includes('denied') || stderr.toLowerCase().includes('error')))) {
+                  console.warn(`[Kernel Mount] Запрос прав Администратора для монтирования ${resp.usbipBusId}...`);
+                  await runElevatedCommand(attachCmd);
+                  console.log(`[Kernel Mount] Устройство ${resp.usbipBusId} смонтировано с правами Администратора!`);
+                } else {
+                  console.log(`[Kernel Mount SUCCESS] Windows PnP смонтировал виртуальный USB порт: ${resp.usbipBusId}`);
                 }
               });
             }
