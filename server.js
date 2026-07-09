@@ -469,10 +469,51 @@ function getUsbipExecutablePath() {
 }
 
 async function cleanDuplicateVhciControllers() {
-  writeAppLog('🛠 [VHCI Fix] Удаление дублирующихся виртуальных контроллеров USBip в Диспетчере устройств...', 'WARN');
-  const psScript = `$devs = @(Get-PnpDevice | Where-Object { $_.FriendlyName -like '*USBip*Emulated*' -or $_.FriendlyName -like '*USBip 3.X*' }); if ($devs.Count -gt 1) { for ($i = 1; $i -lt $devs.Count; $i++) { $id = $devs[$i].InstanceId; pnputil /remove-device "$id" } }`;
-  await runElevatedCommand('powershell.exe', `-NoProfile -ExecutionPolicy Bypass -Command "${psScript.replace(/"/g, '\\"')}"`);
-  writeAppLog('✅ [VHCI Fix] Дубликаты удалены! В Диспетчере устройств оставлен 1 чистый контроллер VHCI.', 'SUCCESS');
+  writeAppLog('🛠 [VHCI Fix] Запуск скрипта очистки дублирующихся контроллеров USBip (с правами Администратора)...', 'WARN');
+  const scriptPath = 'C:\\Users\\Public\\clean_vhci.ps1';
+  const logPath = 'C:\\Users\\Public\\vhci_cleanup.log';
+
+  const psContent = `
+$logFile = "${logPath}"
+"--- [VHCI CLEANUP START] ---" | Out-File -FilePath $logFile -Encoding utf8
+$devs = @(Get-PnpDevice | Where-Object { 
+    $_.FriendlyName -like "*USBip*" -or 
+    $_.FriendlyName -like "*VHCI*" -or 
+    $_.FriendlyName -like "*Emulated Host Controller*" -or
+    $_.InstanceId -like "*USBIP*"
+})
+"Found $($devs.Count) VHCI devices:" | Out-File -FilePath $logFile -Append -Encoding utf8
+foreach ($d in $devs) {
+    " - [$($d.Status)] $($d.FriendlyName) ($($d.InstanceId))" | Out-File -FilePath $logFile -Append -Encoding utf8
+}
+if ($devs.Count -gt 1) {
+    "Removing duplicate VHCI controllers (keeping index 0)..." | Out-File -FilePath $logFile -Append -Encoding utf8
+    for ($i = 1; $i -lt $devs.Count; $i++) {
+        $id = $devs[$i].InstanceId
+        "Removing device instance: $id" | Out-File -FilePath $logFile -Append -Encoding utf8
+        $res = pnputil /remove-device "$id" 2>&1 | Out-String
+        "pnputil output: $res" | Out-File -FilePath $logFile -Append -Encoding utf8
+    }
+    pnputil /scan-for-hardware-changes 2>&1 | Out-Null
+    Start-Sleep -Seconds 2
+} else {
+    "Only $($devs.Count) VHCI controller found." | Out-File -FilePath $logFile -Append -Encoding utf8
+}
+"--- [VHCI CLEANUP END] ---" | Out-File -FilePath $logFile -Append -Encoding utf8
+`;
+  fs.writeFileSync(scriptPath, psContent.trim(), 'utf8');
+
+  await runElevatedCommand('powershell.exe', `-NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`);
+
+  let cleanupLog = '';
+  try {
+    if (fs.existsSync(logPath)) {
+      cleanupLog = fs.readFileSync(logPath, 'utf8').trim();
+    }
+  } catch (e) {}
+
+  writeAppLog(`[VHCI Cleanup Log]:\n${cleanupLog || 'No log produced'}`, 'INFO');
+  writeAppLog('✅ [VHCI Fix] Скрипт очистки дубликатов завершен.', 'SUCCESS');
 }
 
 function performKernelAttach(peerIp, busId, notifyWs = null) {
