@@ -186,7 +186,12 @@ function parseUsbipdList(output) {
       const name = match[3].trim();
       const stateStr = match[4].toLowerCase();
 
-      let isShared = sharedDevices.has(busId) || stateStr.includes('shared') || stateStr.includes('bound');
+      const isNotShared = stateStr.includes('not shared') || stateStr.includes('unshared');
+      let isShared = !isNotShared && (stateStr.includes('shared') || stateStr.includes('bound') || sharedDevices.has(busId));
+      if (isNotShared) {
+        isShared = false;
+        sharedDevices.delete(busId);
+      }
       let isConnected = connectedDevices.has(busId) || stateStr.includes('attached');
 
       const devObj = {
