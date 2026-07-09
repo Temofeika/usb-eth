@@ -47,6 +47,11 @@ app.post('/api/open-log-file', (req, res) => {
   res.json({ success: true });
 });
 
+app.post('/api/fix-vhci-duplicates', async (req, res) => {
+  await cleanDuplicateVhciControllers();
+  res.json({ success: true });
+});
+
 function corsMiddleware(req, res, next) {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -463,6 +468,13 @@ function getUsbipExecutablePath() {
   return 'usbip.exe';
 }
 
+async function cleanDuplicateVhciControllers() {
+  writeAppLog('🛠 [VHCI Fix] Удаление дублирующихся виртуальных контроллеров USBip в Диспетчере устройств...', 'WARN');
+  const psScript = `$devs = @(Get-PnpDevice | Where-Object { $_.FriendlyName -like '*USBip*Emulated*' -or $_.FriendlyName -like '*USBip 3.X*' }); if ($devs.Count -gt 1) { for ($i = 1; $i -lt $devs.Count; $i++) { $id = $devs[$i].InstanceId; pnputil /remove-device "$id" } }`;
+  await runElevatedCommand('powershell.exe', `-NoProfile -ExecutionPolicy Bypass -Command "${psScript.replace(/"/g, '\\"')}"`);
+  writeAppLog('✅ [VHCI Fix] Дубликаты удалены! В Диспетчере устройств оставлен 1 чистый контроллер VHCI.', 'SUCCESS');
+}
+
 function performKernelAttach(peerIp, busId, notifyWs = null) {
   writeAppLog(`⚡ Запуск монтирования устройства ${busId} с удаленного ПК ${peerIp}...`, 'ATTACH');
   exec('mountvol /E', () => {});
@@ -480,7 +492,18 @@ function performKernelAttach(peerIp, busId, notifyWs = null) {
       const output = ((stdout || '') + ' ' + (stderr || '')).trim();
       writeAppLog(`[Kernel Attach Output]: ${output || 'No output'}`, err ? 'ERROR' : 'INFO');
 
-      if (err || output.toLowerCase().includes('admin') || output.toLowerCase().includes('denied') || output.toLowerCase().includes('privilege')) {
+      if (output.toLowerCase().includes('multiple instances')) {
+        writeAppLog('🛠 Обнаружена ошибка Multiple instances of VHCI! Запускаем автоматическое удаление дубликатов...', 'WARN');
+        await cleanDuplicateVhciControllers();
+        writeAppLog('🔄 Повторная попытка монтирования после очистки дубликатов VHCI...', 'INFO');
+        exec(fullCmd, async (err2, stdout2, stderr2) => {
+          const output2 = ((stdout2 || '') + ' ' + (stderr2 || '')).trim();
+          writeAppLog(`[Kernel Attach Output 2]: ${output2}`, err2 ? 'ERROR' : 'SUCCESS');
+          if (notifyWs && notifyWs.readyState === 1) {
+            notifyWs.send(JSON.stringify({ type: 'KERNEL_LOG', success: !err2, message: err2 ? `⚠️ Ошибка: ${output2}` : `✅ Успешно смонтировано в ОС (BUS: ${busId})` }));
+          }
+        });
+      } else if (err || output.toLowerCase().includes('admin') || output.toLowerCase().includes('denied') || output.toLowerCase().includes('privilege')) {
         writeAppLog(`[Kernel Attach] Запрос прав Администратора для монтирования...`, 'WARN');
         await runElevatedCommand(exePath, argsStr);
         writeAppLog(`[Kernel Attach] Монтирование от имени Администратора завершено.`, 'INFO');

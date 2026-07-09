@@ -536,6 +536,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const fixVhciBtn = document.getElementById('fix-vhci-btn');
+  if (fixVhciBtn) {
+    fixVhciBtn.addEventListener('click', () => {
+      fetch('/api/fix-vhci-duplicates', { method: 'POST' });
+      showToast('🛠 Удаляем дубликаты контроллера VHCI в Диспетчере устройств...');
+    });
+  }
+
   // Запуск клиента WebSocket
   connectWebSocket();
 });
