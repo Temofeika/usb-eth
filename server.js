@@ -415,23 +415,53 @@ function broadcastState() {
 }
 
 // --- Вспомогательная функция запуска команды с правами Администратора ---
-function runElevatedCommand(cmdLine) {
+function runElevatedCommand(exePath, argsStr = '') {
   return new Promise((resolve) => {
-    const psCmd = `powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -Command \\"${cmdLine}\\"' -WindowStyle Hidden -Wait"`;
+    const psCmd = `powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '${exePath}' -ArgumentList '${argsStr}' -Verb RunAs -WindowStyle Hidden -Wait"`;
     exec(psCmd, (err) => resolve(!err));
   });
 }
 
-function getUsbipExecutable() {
+function getUsbipExecutablePath() {
   const commonPaths = [
     'C:\\Program Files\\usbip-win2\\usbip.exe',
     'C:\\Program Files\\USBip\\usbip.exe',
     'C:\\Program Files (x86)\\USBip\\usbip.exe'
   ];
   for (const p of commonPaths) {
-    if (fs.existsSync(p)) return `"${p}"`;
+    if (fs.existsSync(p)) return p;
   }
-  return 'usbip';
+  return 'usbip.exe';
+}
+
+function performKernelAttach(peerIp, busId, notifyWs = null) {
+  exec('mountvol /E', () => {});
+  const exePath = getUsbipExecutablePath();
+  const argsStr = `attach -r ${peerIp} -b ${busId}`;
+  const fullCmd = `"${exePath}" ${argsStr}`;
+
+  exec(fullCmd, async (err, stdout, stderr) => {
+    const output = ((stdout || '') + ' ' + (stderr || '')).trim();
+    console.log(`[Kernel Attach Output]: ${output}`);
+
+    if (err || output.toLowerCase().includes('admin') || output.toLowerCase().includes('denied') || output.toLowerCase().includes('privilege')) {
+      console.log(`[Kernel Attach] Запрос прав Администратора для ${exePath} ${argsStr}...`);
+      await runElevatedCommand(exePath, argsStr);
+      if (notifyWs && notifyWs.readyState === 1) {
+        notifyWs.send(JSON.stringify({ type: 'KERNEL_LOG', success: true, message: `⚡ Выполнено монтирование с правами Администратора (BUS: ${busId})` }));
+      }
+    } else if (err || output.toLowerCase().includes('error')) {
+      console.error(`[Kernel Attach Error]: ${output}`);
+      if (notifyWs && notifyWs.readyState === 1) {
+        notifyWs.send(JSON.stringify({ type: 'KERNEL_LOG', success: false, message: `⚠️ Ошибка USBIP: ${output}` }));
+      }
+    } else {
+      console.log(`[Kernel Attach SUCCESS]: ${output}`);
+      if (notifyWs && notifyWs.readyState === 1) {
+        notifyWs.send(JSON.stringify({ type: 'KERNEL_LOG', success: true, message: `✅ Устройство смонтировано в ядре Windows (BUS: ${busId})` }));
+      }
+    }
+  });
 }
 
 // --- Логика проброса и подключения USB (Sharing & Attachment) ---
@@ -454,7 +484,7 @@ function handleShareDevice(deviceId) {
     exec(bindCmd, async (err, stdout, stderr) => {
       if (err || (stderr && stderr.toLowerCase().includes('admin'))) {
         console.warn(`[usbipd bind] Запрос прав Администратора для привязки ${dev.busId}...`);
-        await runElevatedCommand(bindCmd);
+        await runElevatedCommand('usbipd', `bind --busid ${dev.busId} --force`);
         console.log(`[usbipd bind] Устройство ${dev.busId} привязано с правами Администратора!`);
       } else {
         console.log(`[usbipd] Устройство ${dev.busId} успешно привязано к службе USBIPD!`);
@@ -565,20 +595,7 @@ async function handleConnectRemote(peerIp, peerPort, deviceId) {
             
             // Если на клиенте установлен драйвер usbip, выполняем реальное системное монтирование порта!
             if (driverStatus.usbipClientInstalled && resp.usbipBusId) {
-              // Включаем автоматическое назначение букв дисков для USB-накопителей в Windows
-              exec('mountvol /E', () => {});
-
-              const usbipExe = getUsbipExecutable();
-              const attachCmd = `${usbipExe} attach -r ${peerIp} -b ${resp.usbipBusId}`;
-              exec(attachCmd, async (err, stdout, stderr) => {
-                if (err || (stderr && (stderr.toLowerCase().includes('admin') || stderr.toLowerCase().includes('denied') || stderr.toLowerCase().includes('error')))) {
-                  console.warn(`[Kernel Mount] Запрос прав Администратора для монтирования ${resp.usbipBusId}...`);
-                  await runElevatedCommand(attachCmd);
-                  console.log(`[Kernel Mount] Устройство ${resp.usbipBusId} смонтировано с правами Администратора!`);
-                } else {
-                  console.log(`[Kernel Mount SUCCESS] Windows PnP смонтировал виртуальный USB порт: ${resp.usbipBusId}`);
-                }
-              });
+              performKernelAttach(peerIp, resp.usbipBusId, null);
             }
 
             // Добавляем в список активных подключений для отображения в UI

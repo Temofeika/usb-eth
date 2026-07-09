@@ -59,6 +59,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = JSON.parse(event.data);
         if (data.type === 'FULL_STATE') {
           updateAppState(data);
+        } else if (data.type === 'KERNEL_LOG') {
+          showToast(data.message, !data.success);
         }
       } catch (e) {
         console.error('[WebSocket Error]:', e);
@@ -230,6 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   actionBtn = `
                     <div style="display: flex; flex-direction: column; gap: 8px;">
                       <button class="btn btn-danger btn-sm disconnect-remote-btn" data-id="remote-${dev.id}">❌ Отключить от ПК</button>
+                      <button class="btn btn-secondary btn-sm manual-kernel-attach-btn" data-ip="${peer.ip}" data-busid="${dev.busId}" style="width: 100%; font-size: 11px; padding: 7px; background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.4); color: #f59e0b; cursor: pointer; font-weight: 700;">⚡ Перемонтировать в ядре (Админ + Лог)</button>
                       <div style="display: flex; gap: 6px;">
                         <button class="btn btn-secondary btn-sm open-explorer-btn" style="flex: 1; font-size: 11px; padding: 6px; background: rgba(0,240,255,0.15); border: 1px solid rgba(0,240,255,0.4); color: #00f0ff; cursor: pointer;">📂 Этот ПК</button>
                         <button class="btn btn-secondary btn-sm open-devmgr-btn" style="flex: 1; font-size: 11px; padding: 6px; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4); color: #10b981; cursor: pointer;">⚙️ Диспетчер</button>
@@ -315,6 +318,15 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.addEventListener('click', () => {
         sendWsAction('open_system_tool', { tool: 'devmgmt' });
         showToast('⚙️ Открываем Диспетчер устройств Windows...');
+      });
+    });
+
+    document.querySelectorAll('.manual-kernel-attach-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const ip = e.currentTarget.getAttribute('data-ip');
+        const busId = e.currentTarget.getAttribute('data-busid');
+        sendWsAction('manual_kernel_attach', { peerIp: ip, busId: busId });
+        showToast(`⚡ Вызов системного драйвера USBIP для BUS ${busId}...`);
       });
     });
   }
