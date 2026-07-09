@@ -227,7 +227,12 @@ document.addEventListener('DOMContentLoaded', () => {
               try {
                 const isConnectedHere = currentState.connectedDevices && currentState.connectedDevices.some(c => c.originalId === dev.id);
                 
-                let actionBtn = `<button class="btn btn-primary btn-sm connect-remote-btn" data-ip="${peer.ip}" data-port="${peer.port}" data-id="${dev.id}">🔌 Подключить устройство</button>`;
+                let actionBtn = `
+                  <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <button class="btn btn-primary btn-sm connect-remote-btn" data-ip="${peer.ip}" data-port="${peer.port}" data-id="${dev.id}">🔌 Подключить устройство</button>
+                    <button class="btn btn-secondary btn-sm check-remote-list-btn" data-ip="${peer.ip}" style="font-size: 11px; padding: 6px; background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.4); color: #38bdf8; cursor: pointer;">🔍 Проверить порты на сервере (Лог)</button>
+                  </div>
+                `;
                 let statusText = `<span style="color: var(--success-green); font-size: 12px; font-weight: 600;">🟢 Доступно по сети</span>`;
 
                 if (isConnectedHere) {
@@ -329,6 +334,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const busId = e.currentTarget.getAttribute('data-busid');
         sendWsAction('manual_kernel_attach', { peerIp: ip, busId: busId });
         showToast(`⚡ Вызов системного драйвера USBIP для BUS ${busId}...`);
+      });
+    });
+
+    document.querySelectorAll('.check-remote-list-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const ip = e.currentTarget.getAttribute('data-ip');
+        sendWsAction('check_remote_list', { peerIp: ip });
+        showToast(`🔍 Запрашиваем список расшаренных портов с ${ip} (см. Логи)...`);
       });
     });
   }

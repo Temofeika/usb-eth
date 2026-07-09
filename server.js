@@ -403,6 +403,13 @@ wss.on('connection', (ws, req) => {
         handleConnectRemote(data.peerIp, data.peerPort, data.deviceId);
       } else if (data.action === 'disconnect_remote') {
         handleDisconnectRemote(data.deviceId);
+      } else if (data.action === 'check_remote_list') {
+        const exePath = getUsbipExecutablePath();
+        writeAppLog(`🔍 Проверка открытых портов на сервере ${data.peerIp}...`, 'INFO');
+        exec(`"${exePath}" list -r ${data.peerIp}`, (err, stdout, stderr) => {
+          const output = ((stdout || '') + ' ' + (stderr || '')).trim();
+          writeAppLog(`[USBIP LIST ${data.peerIp}]:\n${output || 'Порты не открыты / Устройства не расшарены'}`, err ? 'ERROR' : 'SUCCESS');
+        });
       } else if (data.action === 'open_system_tool') {
         if (data.tool === 'explorer') {
           exec('explorer.exe ::{20D04FE0-3AEA-1069-A2D8-08002B30309D}', () => {});
@@ -567,6 +574,17 @@ function performKernelAttach(peerIp, busId, notifyWs = null) {
 }
 
 // --- Логика проброса и подключения USB (Sharing & Attachment) ---
+function getUsbipdExecutablePath() {
+  const commonPaths = [
+    'C:\\Program Files\\usbipd-win\\usbipd.exe',
+    'C:\\Program Files (x86)\\usbipd-win\\usbipd.exe'
+  ];
+  for (const p of commonPaths) {
+    if (fs.existsSync(p)) return p;
+  }
+  return 'usbipd';
+}
+
 function handleShareDevice(deviceId) {
   const dev = localDevices.find(d => d.id === deviceId || d.busId === deviceId);
   if (!dev) return;
@@ -575,21 +593,23 @@ function handleShareDevice(deviceId) {
   dev.status = 'shared';
   sharedDevices.set(dev.id, dev);
 
-  console.log(`[USB Share] Устройство "${dev.name}" (${dev.vidPid}) открыто для сетевого доступа!`);
+  writeAppLog(`🌐 [USB Share] Открываем доступ по сети к "${dev.name}" (BUS: ${dev.busId})...`, 'SHARE');
 
-  if (driverStatus.usbipdInstalled && dev.busId && dev.busId !== 'virtual') {
-    // Открываем TCP порт 3240 в брандмауэре Windows для службы USBIPD
+  if (dev.busId && dev.busId !== 'virtual') {
+    const usbipdExe = getUsbipdExecutablePath();
     exec('netsh advfirewall firewall add rule name="USBIPD-WIN TCP 3240" dir=in action=allow protocol=TCP localport=3240', () => {});
 
-    // Вызов реального системного бинда в Windows с авто-элевацией при необходимости
-    const bindCmd = `usbipd bind --busid ${dev.busId} --force`;
+    const bindCmd = `"${usbipdExe}" bind --busid ${dev.busId} --force`;
+    writeAppLog(`[USBIPD CMD]: ${bindCmd}`, 'INFO');
+
     exec(bindCmd, async (err, stdout, stderr) => {
-      if (err || (stderr && stderr.toLowerCase().includes('admin'))) {
-        console.warn(`[usbipd bind] Запрос прав Администратора для привязки ${dev.busId}...`);
-        await runElevatedCommand('usbipd', `bind --busid ${dev.busId} --force`);
-        console.log(`[usbipd bind] Устройство ${dev.busId} привязано с правами Администратора!`);
-      } else {
-        console.log(`[usbipd] Устройство ${dev.busId} успешно привязано к службе USBIPD!`);
+      const output = ((stdout || '') + ' ' + (stderr || '')).trim();
+      writeAppLog(`[usbipd bind output]: ${output || 'OK'}`, err ? 'WARN' : 'SUCCESS');
+
+      if (err || output.toLowerCase().includes('admin') || output.toLowerCase().includes('denied') || output.toLowerCase().includes('privilege')) {
+        writeAppLog(`[usbipd bind] Запрос прав Администратора для открытия доступа к BUS ${dev.busId}...`, 'WARN');
+        await runElevatedCommand(usbipdExe, `bind --busid ${dev.busId} --force`);
+        writeAppLog(`✅ [usbipd bind] Устройство BUS ${dev.busId} успешно расшарено от имени Администратора!`, 'SUCCESS');
       }
     });
   }
@@ -608,12 +628,11 @@ function handleUnshareDevice(deviceId) {
   sharedDevices.delete(dev.id);
   connectedDevices.delete(dev.id);
 
-  console.log(`[USB Unshare] Устройство "${dev.name}" скрыто из сети.`);
+  writeAppLog(`[USB Unshare] Устройство "${dev.name}" скрыто из сети.`, 'INFO');
 
-  if (driverStatus.usbipdInstalled && dev.busId && dev.busId !== 'virtual') {
-    exec(`usbipd unbind --busid ${dev.busId}`, (err) => {
-      // Игнорируем ошибки анбинда
-    });
+  if (dev.busId && dev.busId !== 'virtual') {
+    const usbipdExe = getUsbipdExecutablePath();
+    exec(`"${usbipdExe}" unbind --busid ${dev.busId}`, () => {});
   }
 
   broadcastState();
