@@ -248,10 +248,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
                 let statusText = `<span style="color: var(--success-green); font-size: 12px; font-weight: 600;">🟢 Доступно по сети</span>`;
 
-                if (isConnectedHere) {
+                if (isConnectedHere || dev.connected) {
                   actionBtn = `
                     <div style="display: flex; flex-direction: column; gap: 8px;">
-                      <button class="btn btn-danger btn-sm disconnect-remote-btn" data-id="remote-${dev.id}">❌ Отключить от ПК</button>
+                      <button class="btn btn-danger btn-sm disconnect-remote-btn" data-id="remote-${dev.id}">❌ Отключить устройство (Отсоединить)</button>
                       <button class="btn btn-secondary btn-sm manual-kernel-attach-btn" data-ip="${peer.ip}" data-busid="${dev.busId}" style="width: 100%; font-size: 11px; padding: 7px; background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.4); color: #f59e0b; cursor: pointer; font-weight: 700;">⚡ Перемонтировать в ядре (Админ + Лог)</button>
                       <div style="display: flex; gap: 6px;">
                         <button class="btn btn-secondary btn-sm open-explorer-btn" style="flex: 1; font-size: 11px; padding: 6px; background: rgba(0,240,255,0.15); border: 1px solid rgba(0,240,255,0.4); color: #00f0ff; cursor: pointer;">📂 Этот ПК</button>
@@ -259,10 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
                       </div>
                     </div>
                   `;
-                  statusText = `<span style="color: var(--primary-cyan); font-size: 12px; font-weight: 700;">⚡ Смонтировано в ОС</span>`;
-                } else if (dev.connected) {
-                  actionBtn = `<button class="btn btn-secondary btn-sm" disabled style="opacity: 0.5;">🔒 Занято другим ПК</button>`;
-                  statusText = `<span style="color: var(--warning-yellow); font-size: 12px;">Занято: ${dev.connectedTo || 'Клиентом'}</span>`;
+                  statusText = `<span style="color: var(--primary-cyan); font-size: 12px; font-weight: 700;">⚡ Занято / Смонтировано (${dev.connectedTo || 'Клиентом'})</span>`;
                 }
 
                 const typeIcon = (dev.type && typeof dev.type === 'string') ? dev.type.split(' ')[0] : '🔗';
@@ -575,6 +572,14 @@ document.addEventListener('DOMContentLoaded', () => {
     unbindAllBtn.addEventListener('click', () => {
       fetch('/api/cleanup-all', { method: 'POST' });
       showToast('🧹 Отвязываем все расшаренные устройства и закрываем сеансы...');
+    });
+  }
+
+  const detachAllBtn = document.getElementById('detach-all-btn');
+  if (detachAllBtn) {
+    detachAllBtn.addEventListener('click', () => {
+      fetch('/api/detach-all', { method: 'POST' });
+      showToast('🔌 Отсоединяем все клиентские порты (0-15)...');
     });
   }
 

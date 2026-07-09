@@ -725,13 +725,15 @@ app.post('/api/network-attach', (req, res) => {
 
 app.post('/api/network-detach', (req, res) => {
   const { deviceId } = req.body;
-  const dev = localDevices.find(d => d.id === deviceId || d.busId === deviceId);
+  const cleanId = (deviceId || '').replace(/^remote-/, '');
+  const dev = localDevices.find(d => d.id === cleanId || d.busId === cleanId || d.id === deviceId || d.busId === deviceId);
   if (dev) {
     dev.connected = false;
     dev.connectedTo = null;
     dev.status = dev.shared ? 'shared' : 'available';
     connectedDevices.delete(dev.id);
-    console.log(`[Network Detach] Клиент отключился от USB "${dev.name}". Устройство снова свободно.`);
+    connectedDevices.delete(`remote-${dev.id}`);
+    writeAppLog(`[Network Detach] Клиент отключился от USB "${dev.name}". Устройство снова свободно.`, 'INFO');
     broadcastState();
   }
   res.json({ success: true });
@@ -803,26 +805,37 @@ async function handleConnectRemote(peerIp, peerPort, deviceId) {
 }
 
 function handleDisconnectRemote(deviceId) {
-  const remoteConn = connectedDevices.get(deviceId);
-  if (remoteConn && remoteConn.isRemote) {
-    const httpReq = require('http').request({
-      hostname: remoteConn.peerIp,
-      port: 4545,
-      path: '/api/network-detach',
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    httpReq.write(JSON.stringify({ deviceId: remoteConn.originalId }));
-    httpReq.end();
+  const cleanId = (deviceId || '').replace(/^remote-/, '');
+  let remoteConn = connectedDevices.get(deviceId) || connectedDevices.get(`remote-${cleanId}`) || connectedDevices.get(cleanId);
 
-    if (driverStatus.usbipClientInstalled) {
-      exec(`usbip detach -p 0`, () => {});
-    }
-
-    connectedDevices.delete(deviceId);
-    console.log(`[Remote Detach] Отключено удаленное устройство ${remoteConn.deviceName}`);
-    broadcastState();
+  if (remoteConn && remoteConn.peerIp) {
+    try {
+      const httpReq = require('http').request({
+        hostname: remoteConn.peerIp,
+        port: 4545,
+        path: '/api/network-detach',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      httpReq.on('error', () => {});
+      httpReq.write(JSON.stringify({ deviceId: remoteConn.originalId || cleanId }));
+      httpReq.end();
+    } catch (e) {}
   }
+
+  writeAppLog(`🔌 [USB Detach] Выполняем отключение смонтированных портов USBIP...`, 'INFO');
+  try {
+    const exePath = getUsbipExecutablePath();
+    for (let p = 0; p <= 15; p++) {
+      exec(`"${exePath}" detach -p ${p}`, () => {});
+    }
+  } catch (e) {}
+
+  connectedDevices.delete(deviceId);
+  connectedDevices.delete(`remote-${cleanId}`);
+  connectedDevices.delete(cleanId);
+  writeAppLog(`✅ [Remote Detach] Удаленное устройство отключено`, 'SUCCESS');
+  broadcastState();
 }
 
 // --- API эндпоинты для веб-интерфейса ---
@@ -853,13 +866,27 @@ function cleanupAllDevices() {
   } catch (e) {}
   try {
     const exePath = getUsbipExecutablePath();
-    exec(`"${exePath}" detach -p 0`, () => {});
-    exec(`"${exePath}" detach -p 1`, () => {});
+    for (let p = 0; p <= 15; p++) {
+      exec(`"${exePath}" detach -p ${p}`, () => {});
+    }
   } catch (e) {}
 }
 
 app.post('/api/cleanup-all', (req, res) => {
   cleanupAllDevices();
+  res.json({ success: true });
+});
+
+app.post('/api/detach-all', (req, res) => {
+  writeAppLog('🔌 Отсоединение всех клиентских портов USBIP (0-15)...', 'INFO');
+  try {
+    const exePath = getUsbipExecutablePath();
+    for (let p = 0; p <= 15; p++) {
+      exec(`"${exePath}" detach -p ${p}`, () => {});
+    }
+  } catch (e) {}
+  connectedDevices.clear();
+  broadcastState();
   res.json({ success: true });
 });
 
